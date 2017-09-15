@@ -45,9 +45,14 @@ var $ = module.exports =
             callBack(i, obj[i]);
         }
     },
-    echo: function(str)
+    echo: function(str, type)
     {
-        console.log(str);
+        if(!type) type = 'log';
+        console[type](str);
+    },
+    dir: function(obj)
+    {
+        return this.echo(obj, "dir");
     },
     makeVar: function(str)
     {
@@ -66,19 +71,27 @@ var $ = module.exports =
     },
     isSet: function(i)
     {
-        if(i != null && i && i != "undefined" && i != "" && i != undefined) return true;
+        var status = false;
+        if(i != null && i && i != "undefined" && i != "" && i != undefined) status = true;
+        return status;
     },
     isArray: function(i)
     {
-        if(i && !this.empty(i)) if(i instanceof Array) return true;
+        var status = false;
+        if(i && i instanceof Array) status = true;
+        return status;
     },
     isObject: function(i)
-    {
-        if(i && !this.empty(i)) if(i instanceof Object) return true;
+    {        
+        var status = false;
+        if(i && (i instanceof Object || typeof i === 'object') && !this.isArray(i)) status = true;
+        return status;
     },
     isString: function (i)
     {
-        if(i && i != "undefined" && i != undefined) if(typeof i == "string" || typeof i == "STRING") return true;
+        var status = false;
+        if(i && i != "undefined" && i != undefined) if(typeof i == "string" || typeof i == "STRING") status = true;
+        return status;
     },
     isNumaric: function(i)
     {
@@ -101,6 +114,14 @@ var $ = module.exports =
         )
         ? true : false;
     },
+    isIP: function (theText)
+    {
+        if(theText.match(/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/i)) return true;
+        if(theText.match(/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.\*$/i)) return true;
+        if(theText.match(/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.\*$/i)) return true;
+        if(theText.match(/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.\*jQuery/i)) return true;        
+        else return false;
+    },
     inArray: function (val, arr)
     {
         return this.isArray(arr) ? (arr.indexOf(val) > -1 ? true : false) : false;
@@ -108,18 +129,30 @@ var $ = module.exports =
     arrayKey: function (val, arr)
     {
         return this.isArray(arr) ? arr.indexOf(val) : null;
-    },
+    },  
     endArray: function (arr)
     {
-        return this.isArray(arr) ? arr.slice(-1)[0] : null;
+        return this.isArray(arr) && this.len(arr) > 0 ? arr.slice(-1)[0] : null;
     },
     endArrayKey: function (arr)
     {
-        return this.isArray(arr) ? arr.indexOf(end(arr)) : null;
+        return this.isArray(arr) && this.len(arr) > 0 ? arr.indexOf(this.endArray(arr)) : null;
     },
+    arrayRemove: function(index, arr)
+    {
+        if(!this.isArray(arr)) return false;
+        arr.splice(index, 1);
+        return arr;
+    },
+    arrayRemoveByValue: function(value, arr)
+    {
+        var index = this.arrayKey(value, arr);        
+        if(index == -1 || index === null) return arr;
+        return this.arrayRemove(index, arr);
+    },    
     inObject: function (val, obj)
     {
-        if(!this.isObject(obj) || !this.isArray(obj)) return false;
+        if(!this.isObject(obj) && !this.isArray(obj)) return false;
 
         for(var i in obj)
         {
@@ -133,7 +166,7 @@ var $ = module.exports =
         if(this.isObject(arr)) return arr;        
 
         var obj = {};
-        if(isArray(arr))
+        if(this.isArray(arr))
         {
             this.each(arr, function(i, v)
             {
@@ -141,6 +174,19 @@ var $ = module.exports =
             });
         }        
         return obj;
+    },
+    toArray: function(obj)
+    {
+        if(this.isArray(obj)) return obj;        
+        var arr = [];
+        if(this.isObject(obj))
+        {
+            this.each(obj, function(i, v)
+            {
+                arr.push(v);
+            });
+        }        
+        return arr;
     },
     clone: function(obj) 
     {
@@ -152,10 +198,9 @@ var $ = module.exports =
         {
             return data;
         }
-        else if(this.isString(data))
+        else if(this.isJson(data))
         {
             if(data.substr(0,8) == 'JSON|#:|') data = data.substr(8);
-
             if(this.isJson(data)) return JSON.parse(data);
             else return null;
         }
@@ -165,7 +210,7 @@ var $ = module.exports =
         if(!data || (!$.isObject(data) && !$.isArray(data))) return "{}";
         return JSON.stringify(data);
     },
-    escapeRegExp: function (string) 
+    escapeRegExp: function(string) 
     {
         return this.isString(string) ? string.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1") : string;
     },
@@ -189,10 +234,12 @@ var $ = module.exports =
     },
     explode: function (spliter, str)
     {
-        return str.split(spliter);
+        if(this.isArray(str)) return str;
+        return this.isString(str) ? str.split(spliter) : [];
     },
     implode: function (spliter, arr)
     {
+        if(this.isString(arr)) return arr;
         var text = "";
         if(this.isArray(arr))
         {        
@@ -204,32 +251,35 @@ var $ = module.exports =
             }
         } 
         return text;
-    },
-    checkifIP: function (theText)
+    },    
+    random: function (from, to)
     {
-        if(theText.match(/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/i)) return true;
-        if(theText.match(/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.\*$/i)) return true;
-        if(theText.match(/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.\*$/i)) return true;
-        if(theText.match(/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.\*jQuery/i)) return true;        
-        else return false;
+        return Math.floor(Math.random(from) * to+1);
     },
-    rand: function (from, to)
+    round: function(num, dec)
     {
-        return Math.floor(Math.random(from) * to);
+        if(!this.isNumaric(num)) return 0;
+        if(!dec) dec = 0;
+        dec = Math.pow(10, dec);
+        return Math.round(num * dec) / dec;
     },
     parseStr: function (obj)
     {        
         return "" + obj;
     },
-    isJoinRoom: function(socket, room)
+    objToURL: function(obj)
     {
-        return (socket.rooms.indexOf(room) >= 0);
-    },
-    parseURL: function(obj)
-    {
-        if(!obj || (!$.isObject(obj) && !$.isArray(obj))) return "";
+        if(!obj || !this.isObject(obj)) return obj;
         var querystring = require('querystring');
         return querystring.stringify(obj);
+    },
+    urlToObj: function(obj)
+    {
+        if(!obj || (!this.isString(obj))) return obj;
+        var querystring = require('querystring');
+        obj = this.explode("?", obj);
+        obj = obj[1] ? obj[1] : obj[0];
+        return querystring.parse(obj);
     },
     hostName: function()
     {
