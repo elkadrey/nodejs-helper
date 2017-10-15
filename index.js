@@ -20,23 +20,42 @@ var $ = module.exports =
             {
                 this.callBack[method].apply(null, this.data[method]);
             }
-        };      
+        }; 
+
+        this.callSet = function(data, method)
+        {
+            this.data[method] = data;  
+            this.runCallBack(method);
+            return this;
+        }
+        
         this.set = function()
         {                    
             var method = 'then';
-            var data = this.set.arguments || {};
+            var data = this.set.arguments || [];
             var lastArg = data[$.len(data) - 1];
             if(this[lastArg]) 
             {
                 delete data[$.len(data) - 1];
                 method = lastArg;
             }        
-            this.data[method] = data;  
-            this.runCallBack(method);
-            return this;
+            return this.callSet(data, method);
         };
+
+        this.resolve = function()
+        {
+            var data = this.resolve.arguments || [];
+            return this.callSet(data, 'then');
+        }
+
+        this.reject = function()
+        {
+            var data = this.reject.arguments || [];
+            return this.callSet(data, 'error');
+        }
         
         this.createMethod('then'); 
+        this.createMethod('error'); 
     },
     each: function(obj, callBack)
     {
