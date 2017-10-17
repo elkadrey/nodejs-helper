@@ -1,7 +1,13 @@
 var $ = module.exports = 
 {
+    uTime: function (milliSeconds)
+    {
+        var today = new Date();    
+        return milliSeconds ? today.getTime() : Math.floor(today.getTime() / 1000);
+    },
     init: function()
     {        
+        this.response = null;
         this.data = {};
         this.callBack = {};
         this.createMethod = function(methodName)
@@ -24,6 +30,8 @@ var $ = module.exports =
 
         this.callSet = function(data, method)
         {
+            if(this.response) return this;
+            this.response = {method: method, data: data};
             this.data[method] = data;  
             this.runCallBack(method);
             return this;
