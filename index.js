@@ -313,6 +313,12 @@ var $ = module.exports =
         var os = require("os");
         return os.hostname();
     },
+    parseURL: function(obj)
+    {
+        if(!obj || (!$.isObject(obj) && !$.isArray(obj))) return "";
+        var querystring = require('querystring');
+        return querystring.stringify(obj);
+    },
     send: function(host, url, data, method, $options)
     {    
         if(!$options) $options = {};
